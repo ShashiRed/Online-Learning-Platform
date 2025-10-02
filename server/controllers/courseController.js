@@ -95,10 +95,92 @@ const deleteCourse = async (req, res) => {
   }
 };
 
+// @desc    Enroll in a course
+// @route   POST /api/courses/:id/enroll
+// @access  Private
+const enrollCourse = async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+    const user = await User.findById(req.user.id);
+
+    // Check if already enrolled
+    if (user.enrolledCourses.includes(req.params.id)) {
+      return res.status(400).json({ message: 'Already enrolled in this course' });
+    }
+
+    user.enrolledCourses.push(req.params.id);
+    await user.save();
+
+    res.json({ message: 'Successfully enrolled in course', enrolledCourses: user.enrolledCourses });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Add a module to a course
+// @route   POST /api/courses/:id/modules
+// @access  Admin
+const addModule = async (req, res) => {
+  const { title } = req.body;
+  try {
+    const course = await Course.findById(req.params.id);
+    if (course) {
+      const newModule = {
+        title,
+        lessons: [],
+      };
+      course.modules.push(newModule);
+      await course.save();
+      res.status(201).json(course.modules);
+    } else {
+      res.status(404).json({ message: 'Course not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Add a lesson to a module
+// @route   POST /api/courses/:id/modules/:moduleId/lessons
+// @access  Admin
+const addLesson = async (req, res) => {
+  const { title, videoUrl } = req.body;
+  try {
+    const course = await Course.findById(req.params.id);
+    if (course) {
+      const module = course.modules.id(req.params.moduleId);
+      if (module) {
+        const newLesson = {
+          title,
+          videoUrl,
+        };
+        module.lessons.push(newLesson);
+        await course.save();
+        res.status(201).json(module.lessons);
+      } else {
+        res.status(404).json({ message: 'Module not found' });
+      }
+    } else {
+      res.status(404).json({ message: 'Course not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getCourses,
   getCourseById,
   createCourse,
   updateCourse,
   deleteCourse,
+  enrollCourse,
+  addModule,
+  addLesson,
 };
